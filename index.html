@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>每日待办 · 可复盘清单 · 知识点库</title>
+<style>
+  :root{
+    --bg:#f4f6fa; --card:#ffffff; --line:#e8ecf3; --text:#1e2430; --muted:#8b94a7;
+    --accent:#3b6ef6; --accent-soft:#eaf0ff; --done:#9aa3b2; --danger:#e5484d;
+    --ok:#18a058; --radius:14px; --shadow:0 2px 10px rgba(20,30,60,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:28px 16px 72px}
+
+  header h1{margin:0 0 4px;font-size:22px;letter-spacing:.5px}
+  header p{margin:0 0 18px;color:var(--muted);font-size:13px}
+  .secdot{color:#e2e6ee;cursor:default;user-select:none;padding:0 8px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* 主导航 */
+  .nav{display:flex;gap:4px;background:#eef1f7;padding:4px;border-radius:12px;margin-bottom:14px}
+  .navbtn{flex:1;height:40px;border:0;background:transparent;border-radius:9px;font-size:14px;color:var(--muted);cursor:pointer;transition:.15s;animation:navpop .25s ease}
+  .navbtn:hover{color:var(--text)}
+  .navbtn.on{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(20,30,60,.08)}
+  .navbtn[hidden]{display:none}
+  @keyframes navpop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .view[hidden]{display:none}
+
+  /* 输入区 */
+  .adder{display:flex;gap:10px;padding:14px}
+  .adder input{
+    flex:1;min-width:0;height:42px;padding:0 14px;font-size:15px;color:var(--text);
+    border:1px solid var(--line);border-radius:10px;background:#fbfcfe;outline:none;transition:border-color .15s,background .15s;
+  }
+  .adder input:focus{border-color:var(--accent);background:#fff}
+  .btn{
+    height:42px;padding:0 18px;border:1px solid var(--line);border-radius:10px;background:#fff;
+    color:var(--text);font-size:14px;cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  .btn:hover{border-color:#cfd8e8;background:#f7f9fd}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.primary:hover{background:#2f5fe0;border-color:#2f5fe0}
+  .btn.warn{color:var(--danger)}
+  .btn.warn:hover{border-color:var(--danger);background:#fdecec}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* 统计 + 筛选 */
+  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;margin-top:14px}
+  .stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  .stats b{color:var(--text);font-size:14px;font-weight:600}
+  .spacer{flex:1}
+  .tabs{display:flex;gap:4px;background:#f1f4f9;padding:3px;border-radius:9px}
+  .tab{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-size:13px;color:var(--muted);cursor:pointer}
+  .tab.on{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(20,30,60,.08)}
+
+  .searchbox{padding:12px 14px;margin-top:14px}
+  .searchbox input{
+    width:100%;height:40px;padding:0 14px;font-size:14px;color:var(--text);
+    border:1px solid var(--line);border-radius:10px;background:#fbfcfe;outline:none;
+  }
+  .searchbox input:focus{border-color:var(--accent);background:#fff}
+  .tagbar{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 12px}
+
+  /* 列表 */
+  .group{margin-top:14px;overflow:hidden}
+  .group-head{
+    display:flex;align-items:center;gap:8px;padding:12px 16px;
+    font-size:13px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);background:#fbfcfe;
+  }
+  .group-head .count{font-weight:400;color:var(--muted);font-size:12px}
+  .group-body{padding:6px 8px 10px}
+  ul{list-style:none;margin:0;padding:0}
+  .empty{padding:18px 16px;color:var(--muted);font-size:13px;text-align:center}
+
+  .item{
+    display:flex;gap:12px;align-items:flex-start;padding:11px 10px;border-radius:10px;
+    animation:fade .18s ease;
+  }
+  .item + .item{border-top:1px solid #f1f3f8}
+  .item:hover{background:#fafbfe}
+  @keyframes fade{from{opacity:.4;transform:translateY(-2px)}to{opacity:1;transform:none}}
+
+  .cb{
+    appearance:none;-webkit-appearance:none;margin:3px 0 0;width:19px;height:19px;flex:none;
+    border:1.8px solid #c6cfdf;border-radius:6px;background:#fff;cursor:pointer;position:relative;transition:.15s;
+  }
+  .cb:hover{border-color:var(--accent)}
+  .cb:checked{background:var(--accent);border-color:var(--accent)}
+  .cb:checked::after{
+    content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;
+    border:2px solid #fff;border-top:0;border-left:0;transform:rotate(42deg);
+  }
+  .body{flex:1;min-width:0}
+  .text{margin:0;word-break:break-word;transition:color .15s}
+  .meta{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+  .tag{background:#f1f4f9;border-radius:6px;padding:1px 7px;color:var(--muted)}
+  .tag.method{background:var(--accent-soft);color:#2f5fe0}
+
+  .item.is-done .text{text-decoration:line-through;color:var(--done)}
+  .item.is-done .cb{opacity:.85}
+  .item.is-done{opacity:.9}
+
+  .acts{display:flex;gap:2px;flex:none}
+  .act{border:0;background:transparent;color:#c3cad8;font-size:13px;cursor:pointer;padding:4px 6px;border-radius:6px}
+  .act:hover{color:var(--accent);background:var(--accent-soft)}
+  .act.del:hover{color:var(--danger);background:#fdecec}
+
+  /* 知识点 / 面试题卡片 */
+  .note{padding:12px 10px;border-radius:10px;animation:fade .18s ease}
+  .note + .note{border-top:1px solid #f1f3f8}
+  .note:hover{background:#fafbfe}
+  .note[hidden]{display:none}
+  .nhead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+  .ntitle{margin:0;font-size:15px;font-weight:600;word-break:break-word}
+  .ncontent{margin:6px 0 0;font-size:14px;color:#4a5568;white-space:pre-wrap;word-break:break-word}
+  .ncontent.nempty{color:#b7bfcd;font-size:13px}
+  .qstem{color:#8b94a7}
+
+  /* 面试题折叠区 */
+  .qa-full{margin:8px 0 0;padding:10px 12px;background:#f8fafd;border:1px solid var(--line);border-radius:10px}
+  .qa-full[hidden]{display:none}
+  .qa-sec{margin-bottom:10px}
+  .qa-sec:last-child{margin-bottom:0}
+  .qa-sec>b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+  .qa-text{margin:0;font-size:13.5px;line-height:1.7;color:#333c4e;white-space:pre-wrap;word-break:break-word;font-family:inherit}
+  .qfold{
+    margin-top:8px;border:1px solid var(--line);background:#fff;border-radius:8px;
+    padding:4px 12px;font-size:12.5px;color:var(--accent);cursor:pointer;
+  }
+  .qfold:hover{background:var(--accent-soft);border-color:var(--accent)}
+
+  /* 底部工具 */
+  .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding:0 4px;flex-wrap:wrap}
+  .foot .btn{height:34px;padding:0 14px;font-size:13px;color:var(--muted)}
+  .backup-tip{width:100%;text-align:right;font-size:12px;color:var(--muted);padding:0 4px}
+
+  /* 弹窗 */
+  .mask{position:fixed;inset:0;background:rgba(20,26,40,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .mask[hidden]{display:none}
+  .dialog{width:100%;max-width:420px;background:#fff;border-radius:16px;padding:22px;box-shadow:0 20px 50px rgba(15,25,50,.25);max-height:88vh;overflow-y:auto}
+  .dialog[hidden]{display:none}
+  .dialog h3{margin:0 0 6px;font-size:17px}
+  .dialog .sub{margin:0 0 14px;font-size:13px;color:var(--muted);word-break:break-word}
+  .dialog input,.dialog textarea{
+    width:100%;padding:0 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;background:#fbfcfe;
+    font-family:inherit;
+  }
+  .dialog input{height:42px}
+  .dialog textarea{height:96px;padding:10px 14px;line-height:1.6;resize:vertical}
+  .dialog textarea.tall{height:150px}
+  .dialog input:focus,.dialog textarea:focus{border-color:var(--accent);background:#fff}
+  .field{margin-bottom:10px}
+  .field > label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:12.5px;color:#5b6577;cursor:pointer}
+  .chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .chip.on{background:var(--accent-soft);border-color:var(--accent);color:#2f5fe0}
+  .hint{margin:8px 0 0;font-size:12px;color:var(--danger);min-height:16px}
+  .dlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+
+  /* 撤销提示 */
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(12px);
+    background:#1e2430;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;
+    display:flex;gap:14px;align-items:center;opacity:0;pointer-events:none;transition:.2s;z-index:60;
+  }
+  .toast.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+  .toast button{background:transparent;border:0;color:#7fa9ff;font-size:13px;cursor:pointer;padding:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>每日待办<span class="secdot" id="secretDot">·</span>知识点库</h1>
+    <p>待办勾选完成可记录「以何种方式完成」；随手记下的知识点可分类、可搜索、可编辑。数据保存在本机浏览器，建议定期导出备份。</p>
+  </header>
+
+  <nav class="nav" id="nav">
+    <button class="navbtn on" data-view="todo">待办</button>
+    <button class="navbtn" data-view="note">知识点</button>
+    <button class="navbtn" data-view="qa" id="navQa" hidden>面试题</button>
+  </nav>
+
+  <!-- ============ 待办视图 ============ -->
+  <div class="view" id="viewTodo">
+    <form class="card adder" id="addForm" autocomplete="off">
+      <input id="addInput" maxlength="200" placeholder="今天要完成什么？例如：整理周报初稿" aria-label="新待办内容">
+      <button class="btn primary" type="submit">添加</button>
+    </form>
+
+    <div class="card toolbar">
+      <div class="stats" id="stats"></div>
+      <div class="spacer"></div>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-filter="all">全部</button>
+        <button class="tab" data-filter="open">进行中</button>
+        <button class="tab" data-filter="done">已完成</button>
+      </div>
+    </div>
+
+    <section class="card group" id="groupOpen">
+      <div class="group-head">进行中 <span class="count" id="openCount"></span></div>
+      <div class="group-body">
+        <ul id="openList"></ul>
+        <div class="empty" id="openEmpty">暂无进行中的事项，添加一条开始吧。</div>
+      </div>
+    </section>
+
+    <section class="card group" id="groupDone">
+      <div class="group-head">已完成 · 复盘区 <span class="count" id="doneCount"></span></div>
+      <div class="group-body">
+        <ul id="doneList"></ul>
+        <div class="empty" id="doneEmpty">还没有完成的事项。</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 知识点视图 ============ -->
+  <div class="view" id="viewNote" hidden>
+    <form class="card adder" id="noteAddForm" autocomplete="off">
+      <input id="noteInput" maxlength="120" placeholder="随手记一个知识点：一句话说清它是什么" aria-label="新知识点标题">
+      <button class="btn primary" type="submit">记下来</button>
+    </form>
+
+    <div class="card searchbox">
+      <input id="noteSearch" placeholder="搜索标题、内容、标签、来源…" aria-label="搜索知识点">
+    </div>
+
+    <div class="card toolbar">
+      <div class="stats" id="noteStats"></div>
+      <div class="spacer"></div>
+      <div class="tagbar" id="noteTagBar"></div>
+    </div>
+
+    <section class="card group">
+      <div class="group-head">知识点库 <span class="count" id="noteCount"></span></div>
+      <div class="group-body">
+        <ul id="noteList"></ul>
+        <div class="empty" id="noteEmpty">还没有记录知识点，想到什么随手记一条。</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 面试题视图（隐藏） ============ -->
+  <div class="view" id="viewQa" hidden>
+    <form class="card adder" id="qaAddForm" autocomplete="off">
+      <input id="qaInput" maxlength="150" placeholder="记一道面试题：一句话说清考什么" aria-label="新面试题标题">
+      <button class="btn primary" type="submit">记下来</button>
+    </form>
+
+    <div class="card searchbox">
+      <input id="qaSearch" placeholder="搜索题目、题干、答案、分类…" aria-label="搜索面试题">
+    </div>
+
+    <div class="card toolbar">
+      <div class="stats" id="qaStats"></div>
+      <div class="spacer"></div>
+      <div class="tagbar" id="qaTagBar"></div>
+    </div>
+
+    <section class="card group">
+      <div class="group-head">面试题库 <span class="count" id="qaCount"></span></div>
+      <div class="group-body">
+        <ul id="qaList"></ul>
+        <div class="empty" id="qaEmpty">还没有面试题，先记一道。</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="foot">
+    <div class="backup-tip" id="backupTip"></div>
+    <button class="btn" id="exportBtn">导出备份</button>
+    <button class="btn" id="importBtn">导入备份</button>
+    <button class="btn warn" id="clearDoneBtn">清空已完成</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+</div>
+
+<div class="mask" id="mask" hidden>
+  <!-- 完成方式 -->
+  <div class="dialog" id="dlgMethod" hidden role="dialog" aria-modal="true">
+    <h3>以何种方式完成？</h3>
+    <p class="sub" id="dlgTitle"></p>
+    <div class="chips" id="chips"></div>
+    <input id="methodInput" maxlength="120" placeholder="例如：番茄钟 2 个周期 / 用 AI 生成初稿后修改">
+    <p class="hint" id="dlgHint"></p>
+    <div class="dlg-actions">
+      <button class="btn" id="dlgCancel">取消</button>
+      <button class="btn primary" id="dlgOk">确认完成</button>
+    </div>
+  </div>
+
+  <!-- 编辑待办 -->
+  <div class="dialog" id="dlgTodo" hidden role="dialog" aria-modal="true">
+    <h3>编辑待办</h3>
+    <div class="field">
+      <label for="tdText">内容</label>
+      <input id="tdText" maxlength="200">
+    </div>
+    <div class="field" id="tdMethodField" hidden>
+      <label for="tdMethod">完成方式（可修改）</label>
+      <input id="tdMethod" maxlength="120" placeholder="当时是怎么完成的">
+    </div>
+    <p class="hint" id="tdHint"></p>
+    <div class="dlg-actions">
+      <button class="btn" id="tdCancel">取消</button>
+      <button class="btn primary" id="tdSave">保存</button>
+    </div>
+  </div>
+
+  <!-- 新增 / 编辑知识点 -->
+  <div class="dialog" id="dlgNote" hidden role="dialog" aria-modal="true">
+    <h3 id="ntHead">编辑知识点</h3>
+    <div class="field">
+      <label for="ntTitle">标题</label>
+      <input id="ntTitle" maxlength="120" placeholder="一句话说清它是什么">
+    </div>
+    <div class="field">
+      <label for="ntContent">内容</label>
+      <textarea id="ntContent" maxlength="4000" placeholder="展开说说：原理 / 怎么用 / 注意点"></textarea>
+    </div>
+    <div class="field">
+      <label for="ntTags">标签（逗号或空格分隔）</label>
+      <div class="chips" id="ntTagChips"></div>
+      <input id="ntTags" maxlength="120" placeholder="例如：深度学习, RNN">
+    </div>
+    <div class="field">
+      <label for="ntSource">来源（选填）</label>
+      <input id="ntSource" maxlength="120" placeholder="例如：黑马课程 P32 / 某篇文档">
+    </div>
+    <p class="hint" id="ntHint"></p>
+    <div class="dlg-actions">
+      <button class="btn" id="ntCancel">取消</button>
+      <button class="btn primary" id="ntSave">保存</button>
+    </div>
+  </div>
+
+  <!-- 新增 / 编辑面试题 -->
+  <div class="dialog" id="dlgQa" hidden role="dialog" aria-modal="true">
+    <h3 id="qaHead">编辑面试题</h3>
+    <div class="field">
+      <label for="qaTitle">题目</label>
+      <input id="qaTitle" maxlength="150" placeholder="例如：可变默认参数为什么是坑">
+    </div>
+    <div class="field">
+      <label for="qaContent">题干</label>
+      <textarea id="qaContent" maxlength="6000" placeholder="面试官原话 / 代码片段 / 要回答的点"></textarea>
+    </div>
+    <div class="field">
+      <label for="qaAnswer">参考答案</label>
+      <textarea id="qaAnswer" class="tall" maxlength="12000" placeholder="要点 + 常见错误回答 + 能力信号"></textarea>
+    </div>
+    <div class="field">
+      <label for="qaCat">分类</label>
+      <div class="chips" id="qaCatChips"></div>
+      <input id="qaCat" maxlength="30" placeholder="基础层 / 进阶层 / 自定义">
+    </div>
+    <p class="hint" id="qaHint"></p>
+    <div class="dlg-actions">
+      <button class="btn" id="qaCancel">取消</button>
+      <button class="btn primary" id="qaSave">保存</button>
+    </div>
+  </div>
+
+  <!-- 导入确认 -->
+  <div class="dialog" id="dlgImport" hidden role="dialog" aria-modal="true">
+    <h3>导入备份</h3>
+    <p class="sub" id="imInfo"></p>
+    <p class="hint" id="imHint"></p>
+    <div class="dlg-actions">
+      <button class="btn" id="imCancel">取消</button>
+      <button class="btn" id="imMerge">合并导入</button>
+      <button class="btn primary" id="imReplace">覆盖导入</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo">撤销</button></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ============ 数据层：单一数据源 + 延迟批量写入 ============ */
+  const KEY = "todo.daily.v2";
+  const KEY_V1 = "todo.daily.v1";
+  const CHIPS = ["番茄钟专注", "借助 AI/工具", "请教他人", "会议推进", "碎片时间处理"];
+  const NOTE_TAGS = ["Python", "深度学习", "剪辑", "文案", "工具技巧"];
+  const QA_CATS = ["基础层", "进阶层", "场景与架构层", "八股题", "项目题"];
+  const PRESET_QA = [];
+
+  /** 待办 */
+  let items = [];
+  /** 知识点 */
+  let notes = [];
+  /** 面试题 */
+  let questions = [];
+  /** 元信息（防重注入等） */
+  let meta = {};
+
+  const byId = new Map();
+  const nodeOf = new Map();
+  const noteById = new Map();
+  const noteNodeOf = new Map();
+  const qaById = new Map();
+  const qaNodeOf = new Map();
+
+  let filter = "all";
+  let currentView = "todo";
+  let qaVisible = false;
+  let pendingId = null;
+  let editingTodoId = null;
+  let editingNoteId = null;
+  let editingQaId = null;
+  let pendingImport = null;
+  let saveTimer = 0, dirty = false;
+
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => (n < 10 ? "0" + n : "" + n);
+  const dayKey = (ts) => { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+  const fmtTime = (ts) => { const d = new Date(ts); return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const parseTags = (s) => String(s || "").split(/[,，\s]+/).map((t) => t.trim()).filter(Boolean).slice(0, 8);
+
+  function normItems(list) {
+    const out = [];
+    if (!Array.isArray(list)) return out;
+    for (const it of list) {
+      if (!it || typeof it.id !== "string" || typeof it.text !== "string") continue;
+      const item = {
+        id: it.id,
+        text: it.text.slice(0, 200),
+        createdAt: Number(it.createdAt) || Date.now(),
+        done: !!it.done,
+        completedAt: it.completedAt ? Number(it.completedAt) : null,
+        method: typeof it.method === "string" ? it.method.slice(0, 120) : "",
+        editedAt: it.editedAt ? Number(it.editedAt) : null
+      };
+      if (!item.done) { item.completedAt = null; item.method = ""; }
+      out.push(item);
+    }
+    return out.sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  function normNotes(list) {
+    const out = [];
+    if (!Array.isArray(list)) return out;
+    for (const n of list) {
+      if (!n || typeof n.id !== "string" || typeof n.title !== "string") continue;
+      out.push({
+        id: n.id,
+        title: n.title.slice(0, 120),
+        content: typeof n.content === "string" ? n.content.slice(0, 4000) : "",
+        tags: Array.isArray(n.tags) ? n.tags.filter((t) => typeof t === "string").map((t) => t.trim()).filter(Boolean).slice(0, 8) : [],
+        source: typeof n.source === "string" ? n.source.slice(0, 120) : "",
+        createdAt: Number(n.createdAt) || Date.now(),
+        updatedAt: n.updatedAt ? Number(n.updatedAt) : null
+      });
+    }
+    return out.sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  function normQuestions(list) {
+    const out = [];
+    if (!Array.isArray(list)) return out;
+    for (const q of list) {
+      if (!q || typeof q.id !== "string" || typeof q.title !== "string") continue;
+      out.push({
+        id: q.id,
+        title: q.title.slice(0, 150),
+        content: typeof q.content === "string" ? q.content.slice(0, 6000) : "",
+        answer: typeof q.answer === "string" ? q.answer.slice(0, 12000) : "",
+        category: typeof q.category === "string" ? q.category.slice(0, 30) : "",
+        source: typeof q.source === "string" ? q.source.slice(0, 120) : "",
+        createdAt: Number(q.createdAt) || Date.now(),
+        updatedAt: q.updatedAt ? Number(q.updatedAt) : null
+      });
+    }
+    return out.sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  function load() {
+    let migrated = false;
+    try {
+      let raw = localStorage.getItem(KEY);
+      if (!raw) {
+        raw = localStorage.getItem(KEY_V1);
+        if (raw) {
+          const data = JSON.parse(raw);
+          items = normItems(Array.isArray(data) ? data : data.items);
+          migrated = true;
+        }
+      } else {
+        const data = JSON.parse(raw);
+        items = normItems(data.items);
+        notes = normNotes(data.notes);
+        questions = normQuestions(data.questions);
+        meta = (data.meta && typeof data.meta === "object") ? data.meta : {};
+      }
+    } catch (e) {
+      console.warn("本地数据解析失败，已忽略损坏内容", e);
+    }
+    for (const it of items) byId.set(it.id, it);
+    for (const n of notes) noteById.set(n.id, n);
+    for (const q of questions) qaById.set(q.id, q);
+    return migrated;
+  }
+
+  // 预置面试题：只在首次注入一次，用户删光后不会复活
+  function injectPreset() {
+    if (meta.presetLoaded || !PRESET_QA.length) return;
+    let i = 0;
+    for (const q of PRESET_QA) {
+      if (qaById.has(q.id)) { i++; continue; }
+      // 题号递增时间戳，保证列表按 Q1 → Q15 正序展示
+      const item = { ...q, createdAt: q.createdAt + i };
+      questions.push(item);
+      qaById.set(item.id, item);
+      i++;
+    }
+    meta.presetLoaded = true;
+    dirty = true;
+  }
+
+  function flush() {
+    if (!dirty) return;
+    dirty = false;
+    clearTimeout(saveTimer); saveTimer = 0;
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ v: 2, items, notes, questions, meta, savedAt: Date.now() }));
+      renderBackupTip();
+    } catch (e) {
+      toast("保存失败：本地存储空间不足或被禁用");
+    }
+  }
+  const scheduleSave = () => { dirty = true; if (!saveTimer) saveTimer = setTimeout(flush, 500); };
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+
+  /* ============ 视图切换 ============ */
+  const viewTodo = $("viewTodo"), viewNote = $("viewNote"), viewQa = $("viewQa");
+  function switchView(v) {
+    currentView = v;
+    for (const b of $("nav").children) b.classList.toggle("on", b.dataset.view === v);
+    viewTodo.hidden = v !== "todo";
+    viewNote.hidden = v !== "note";
+    viewQa.hidden = v !== "qa";
+    if (v === "note") $("noteInput").focus();
+    if (v === "qa") $("qaInput").focus();
+  }
+  $("nav").addEventListener("click", (e) => {
+    const btn = e.target.closest(".navbtn");
+    if (!btn || btn.hidden) return;
+    switchView(btn.dataset.view);
+  });
+
+  // 隐藏入口：标题中间的圆点，点一下出现「面试题」tab，再点一下收回
+  $("secretDot").addEventListener("click", () => {
+    qaVisible = !qaVisible;
+    $("navQa").hidden = !qaVisible;
+    if (!qaVisible && currentView === "qa") switchView("todo");
+  });
+
+  /* ============ 待办渲染层 ============ */
+  const openList = $("openList"), doneList = $("doneList");
+
+  function fillMeta(meta, item) {
+    meta.textContent = "";
+    const t = document.createElement("span");
+    t.className = "tag";
+    t.textContent = "创建 " + fmtTime(item.createdAt);
+    meta.appendChild(t);
+    if (item.done) {
+      const c = document.createElement("span");
+      c.className = "tag";
+      c.textContent = "完成 " + (item.completedAt ? fmtTime(item.completedAt) : "");
+      meta.appendChild(c);
+      if (item.method) {
+        const m = document.createElement("span");
+        m.className = "tag method";
+        m.textContent = "方式：" + item.method;
+        meta.appendChild(m);
+      }
+    }
+    if (item.editedAt) {
+      const e = document.createElement("span");
+      e.className = "tag";
+      e.textContent = "已编辑";
+      meta.appendChild(e);
+    }
+  }
+
+  function buildNode(item) {
+    const li = document.createElement("li");
+    li.className = "item" + (item.done ? " is-done" : "");
+    li.dataset.id = item.id;
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.className = "cb"; cb.checked = item.done;
+    cb.dataset.act = "toggle"; cb.setAttribute("aria-label", "标记完成");
+
+    const body = document.createElement("div");
+    body.className = "body";
+    const p = document.createElement("p");
+    p.className = "text"; p.textContent = item.text;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    fillMeta(meta, item);
+    body.append(p, meta);
+
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    const ed = document.createElement("button");
+    ed.className = "act"; ed.dataset.act = "edit"; ed.textContent = "编辑";
+    const del = document.createElement("button");
+    del.className = "act del"; del.dataset.act = "delete"; del.textContent = "删除";
+    acts.append(ed, del);
+
+    li.append(cb, body, acts);
+    li.dataset.ts = item.done ? (item.completedAt || 0) : item.createdAt;
+    nodeOf.set(item.id, li);
+    return li;
+  }
+
+  function mount(item) {
+    const li = nodeOf.get(item.id) || buildNode(item);
+    if (item.done) {
+      const first = doneList.firstElementChild;
+      if (!first || item.completedAt >= Number(first.dataset.ts)) doneList.prepend(li);
+      else {
+        let cur = first;
+        while (cur && item.completedAt < Number(cur.dataset.ts)) cur = cur.nextElementSibling;
+        doneList.insertBefore(li, cur);
+      }
+    } else {
+      let cur = openList.firstElementChild;
+      while (cur && item.createdAt > Number(cur.dataset.ts)) cur = cur.nextElementSibling;
+      openList.insertBefore(li, cur);
+    }
+    li.dataset.ts = item.done ? (item.completedAt || 0) : item.createdAt;
+    return li;
+  }
+
+  function syncNode(item) {
+    const li = nodeOf.get(item.id);
+    if (!li) return;
+    li.classList.toggle("is-done", item.done);
+    li.querySelector(".cb").checked = item.done;
+    li.querySelector(".text").textContent = item.text;
+    fillMeta(li.querySelector(".meta"), item);
+    li.dataset.ts = item.done ? (item.completedAt || 0) : item.createdAt;
+  }
+
+  function renderStats() {
+    const today = dayKey(Date.now());
+    let openN = 0, doneToday = 0, totalDone = 0, todayNew = 0;
+    for (const it of items) {
+      if (it.done) { totalDone++; if (dayKey(it.completedAt || 0) === today) doneToday++; }
+      else openN++;
+      if (dayKey(it.createdAt) === today) todayNew++;
+    }
+    $("stats").innerHTML =
+      `<span>待办 <b>${openN}</b></span><span>今日新增 <b>${todayNew}</b></span>` +
+      `<span>今日完成 <b>${doneToday}</b></span><span>累计完成 <b>${totalDone}</b></span>`;
+    $("openCount").textContent = openN ? `（${openN} 条）` : "";
+    $("doneCount").textContent = totalDone ? `（${totalDone} 条）` : "";
+    $("openEmpty").hidden = openN > 0;
+    $("doneEmpty").hidden = totalDone > 0;
+  }
+
+  function applyFilter() {
+    $("groupOpen").hidden = filter === "done";
+    $("groupDone").hidden = filter === "open";
+  }
+
+  /* ============ 知识点渲染层 ============ */
+  const noteList = $("noteList");
+  let noteQuery = "", noteTag = "";
+
+  function fillNote(li, n) {
+    const c = li.querySelector(".ncontent");
+    if (n.content) { c.textContent = n.content; c.classList.remove("nempty"); }
+    else { c.textContent = "（未填写内容 · 点「编辑」补充）"; c.classList.add("nempty"); }
+    li.querySelector(".ntitle").textContent = n.title;
+    const meta = li.querySelector(".meta");
+    meta.textContent = "";
+    for (const tg of n.tags) {
+      const s = document.createElement("span");
+      s.className = "tag method"; s.textContent = tg;
+      meta.appendChild(s);
+    }
+    if (n.source) {
+      const s = document.createElement("span");
+      s.className = "tag"; s.textContent = "来源：" + n.source;
+      meta.appendChild(s);
+    }
+    const t = document.createElement("span");
+    t.className = "tag"; t.textContent = "记录 " + fmtTime(n.createdAt);
+    meta.appendChild(t);
+    if (n.updatedAt) {
+      const s = document.createElement("span");
+      s.className = "tag"; s.textContent = "编辑 " + fmtTime(n.updatedAt);
+      meta.appendChild(s);
+    }
+  }
+
+  function buildNoteNode(n) {
+    const li = document.createElement("li");
+    li.className = "note"; li.dataset.id = n.id;
+
+    const head = document.createElement("div");
+    head.className = "nhead";
+    const title = document.createElement("p");
+    title.className = "ntitle";
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    const ed = document.createElement("button");
+    ed.className = "act"; ed.dataset.act = "edit"; ed.textContent = "编辑";
+    const del = document.createElement("button");
+    del.className = "act del"; del.dataset.act = "delete"; del.textContent = "删除";
+    acts.append(ed, del);
+    head.append(title, acts);
+
+    const content = document.createElement("p");
+    content.className = "ncontent";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+
+    li.append(head, content, meta);
+    fillNote(li, n);
+    noteNodeOf.set(n.id, li);
+    return li;
+  }
+
+  function mountNote(n) {
+    const li = noteNodeOf.get(n.id) || buildNoteNode(n);
+    let cur = noteList.firstElementChild;
+    while (cur && n.createdAt < Number(cur.dataset.ts)) cur = cur.nextElementSibling;
+    noteList.insertBefore(li, cur);
+    li.dataset.ts = n.createdAt;
+    return li;
+  }
+
+  function renderNoteStats() {
+    const today = dayKey(Date.now());
+    let todayNew = 0;
+    for (const n of notes) if (dayKey(n.createdAt) === today) todayNew++;
+    const tags = new Set();
+    for (const n of notes) for (const t of n.tags) tags.add(t);
+    $("noteStats").innerHTML =
+      `<span>知识点 <b>${notes.length}</b></span><span>今日新增 <b>${todayNew}</b></span><span>标签 <b>${tags.size}</b></span>`;
+    $("noteCount").textContent = notes.length ? `（${notes.length} 条）` : "";
+  }
+
+  function renderNoteTags() {
+    const counter = new Map();
+    for (const n of notes) for (const t of n.tags) counter.set(t, (counter.get(t) || 0) + 1);
+    const list = [...counter.entries()].sort((a, b) => b[1] - a[1]);
+    const bar = $("noteTagBar");
+    bar.textContent = "";
+    const all = document.createElement("button");
+    all.className = "chip" + (noteTag === "" ? " on" : "");
+    all.textContent = "全部";
+    all.dataset.tag = "";
+    bar.appendChild(all);
+    for (const [t, c] of list) {
+      const b = document.createElement("button");
+      b.className = "chip" + (noteTag === t ? " on" : "");
+      b.textContent = t + " " + c;
+      b.dataset.tag = t;
+      bar.appendChild(b);
+    }
+  }
+
+  function applyNoteFilter() {
+    const q = noteQuery.toLowerCase();
+    let shown = 0;
+    for (const [id, li] of noteNodeOf) {
+      const n = noteById.get(id);
+      if (!n) { li.hidden = true; continue; }
+      let ok = true;
+      if (noteTag && !n.tags.includes(noteTag)) ok = false;
+      if (ok && q) {
+        const hay = (n.title + " " + n.content + " " + n.tags.join(" ") + " " + n.source).toLowerCase();
+        if (!hay.includes(q)) ok = false;
+      }
+      li.hidden = !ok;
+      if (ok) shown++;
+    }
+    const empty = $("noteEmpty");
+    empty.hidden = shown > 0;
+    empty.textContent = notes.length ? "没有匹配的知识点，换个关键词或标签试试。" : "还没有记录知识点，想到什么随手记一条。";
+  }
+
+  /* ============ 面试题渲染层 ============ */
+  const qaList = $("qaList");
+  let qaQuery = "", qaTag = "";
+
+  function stemPreview(s) {
+    s = String(s || "").replace(/\s+/g, " ").trim();
+    return s.length > 90 ? s.slice(0, 90) + "…" : s;
+  }
+
+  function fillQa(li, q) {
+    li.querySelector(".ntitle").textContent = q.title;
+    const st = li.querySelector(".qstem");
+    const pv = stemPreview(q.content);
+    if (pv) { st.textContent = pv; st.classList.remove("nempty"); }
+    else { st.textContent = "（未填题干 · 点「编辑」补充）"; st.classList.add("nempty"); }
+    const meta = li.querySelector(".meta");
+    meta.textContent = "";
+    if (q.category) {
+      const s = document.createElement("span");
+      s.className = "tag method"; s.textContent = q.category;
+      meta.appendChild(s);
+    }
+    if (q.source) {
+      const s = document.createElement("span");
+      s.className = "tag"; s.textContent = "来源：" + q.source;
+      meta.appendChild(s);
+    }
+    const t = document.createElement("span");
+    t.className = "tag"; t.textContent = "记录 " + fmtTime(q.createdAt);
+    meta.appendChild(t);
+    if (q.updatedAt) {
+      const s = document.createElement("span");
+      s.className = "tag"; s.textContent = "编辑 " + fmtTime(q.updatedAt);
+      meta.appendChild(s);
+    }
+    li.querySelector(".qa-text-stem").textContent = q.content || "（未填题干）";
+    li.querySelector(".qa-text-answer").textContent = q.answer || "（未填参考答案）";
+    li.querySelector(".qa-full").hidden = true;
+    li.querySelector(".qfold").textContent = "查看答案";
+  }
+
+  function buildQaNode(q) {
+    const li = document.createElement("li");
+    li.className = "note qa"; li.dataset.id = q.id;
+
+    const head = document.createElement("div");
+    head.className = "nhead";
+    const title = document.createElement("p");
+    title.className = "ntitle";
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    const ed = document.createElement("button");
+    ed.className = "act"; ed.dataset.act = "edit"; ed.textContent = "编辑";
+    const del = document.createElement("button");
+    del.className = "act del"; del.dataset.act = "delete"; del.textContent = "删除";
+    acts.append(ed, del);
+    head.append(title, acts);
+
+    const stem = document.createElement("p");
+    stem.className = "ncontent qstem";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+
+    const full = document.createElement("div");
+    full.className = "qa-full"; full.hidden = true;
+    const sec1 = document.createElement("div");
+    sec1.className = "qa-sec";
+    const b1 = document.createElement("b"); b1.textContent = "题干";
+    const p1 = document.createElement("pre"); p1.className = "qa-text qa-text-stem";
+    sec1.append(b1, p1);
+    const sec2 = document.createElement("div");
+    sec2.className = "qa-sec";
+    const b2 = document.createElement("b"); b2.textContent = "参考答案";
+    const p2 = document.createElement("pre"); p2.className = "qa-text qa-text-answer";
+    sec2.append(b2, p2);
+    full.append(sec1, sec2);
+
+    const fold = document.createElement("button");
+    fold.className = "qfold"; fold.dataset.act = "fold"; fold.textContent = "查看答案";
+
+    li.append(head, stem, meta, full, fold);
+    fillQa(li, q);
+    qaNodeOf.set(q.id, li);
+    return li;
+  }
+
+  function mountQa(q) {
+    // 正序：题号小的在前（Q1 → Q15），手动新增追加到末尾
+    const li = qaNodeOf.get(q.id) || buildQaNode(q);
+    let cur = qaList.firstElementChild;
+    while (cur && q.createdAt > Number(cur.dataset.ts)) cur = cur.nextElementSibling;
+    qaList.insertBefore(li, cur);
+    li.dataset.ts = q.createdAt;
+    return li;
+  }
+
+  function renderQaStats() {
+    const today = dayKey(Date.now());
+    let todayNew = 0;
+    for (const q of questions) if (dayKey(q.createdAt) === today) todayNew++;
+    const cats = new Set();
+    for (const q of questions) if (q.category) cats.add(q.category);
+    $("qaStats").innerHTML =
+      `<span>题目 <b>${questions.length}</b></span><span>今日新增 <b>${todayNew}</b></span><span>分类 <b>${cats.size}</b></span>`;
+    $("qaCount").textContent = questions.length ? `（${questions.length} 题）` : "";
+  }
+
+  function renderQaTags() {
+    const counter = new Map();
+    for (const q of questions) if (q.category) counter.set(q.category, (counter.get(q.category) || 0) + 1);
+    const list = [...counter.entries()].sort((a, b) => b[1] - a[1]);
+    const bar = $("qaTagBar");
+    bar.textContent = "";
+    const all = document.createElement("button");
+    all.className = "chip" + (qaTag === "" ? " on" : "");
+    all.textContent = "全部";
+    all.dataset.tag = "";
+    bar.appendChild(all);
+    for (const [t, c] of list) {
+      const b = document.createElement("button");
+      b.className = "chip" + (qaTag === t ? " on" : "");
+      b.textContent = t + " " + c;
+      b.dataset.tag = t;
+      bar.appendChild(b);
+    }
+  }
+
+  function applyQaFilter() {
+    const q = qaQuery.toLowerCase();
+    let shown = 0;
+    for (const [id, li] of qaNodeOf) {
+      const qa = qaById.get(id);
+      if (!qa) { li.hidden = true; continue; }
+      let ok = true;
+      if (qaTag && qa.category !== qaTag) ok = false;
+      if (ok && q) {
+        const hay = (qa.title + " " + qa.content + " " + qa.answer + " " + qa.category + " " + qa.source).toLowerCase();
+        if (!hay.includes(q)) ok = false;
+      }
+      li.hidden = !ok;
+      if (ok) shown++;
+    }
+    const empty = $("qaEmpty");
+    empty.hidden = shown > 0;
+    empty.textContent = questions.length ? "没有匹配的题目，换个关键词或分类试试。" : "还没有面试题，先记一道。";
+  }
+
+  /* ============ 待办交互 ============ */
+  $("addForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = $("addInput");
+    const text = input.value.trim();
+    if (!text) return;
+    const item = { id: newId(), text, createdAt: Date.now(), done: false, completedAt: null, method: "", editedAt: null };
+    items.push(item);
+    byId.set(item.id, item);
+    mount(item);
+    input.value = "";
+    input.focus();
+    renderStats();
+    scheduleSave();
+  });
+
+  for (const list of [openList, doneList]) {
+    list.addEventListener("click", (e) => {
+      const li = e.target.closest(".item");
+      if (!li) return;
+      const item = byId.get(li.dataset.id);
+      if (!item) return;
+      const act = e.target.dataset.act;
+      if (act === "delete") return removeItem(item);
+      if (act === "edit") return openTodoEdit(item);
+    });
+    list.addEventListener("change", (e) => {
+      const cb = e.target;
+      if (!cb.classList.contains("cb")) return;
+      const item = byId.get(cb.closest(".item").dataset.id);
+      if (!item) return;
+      if (item.done) {
+        item.done = false; item.completedAt = null;
+        openList.appendChild(nodeOf.get(item.id));
+        mount(item); syncNode(item); renderStats(); scheduleSave();
+      } else {
+        cb.checked = false;
+        openDialog("dlgMethod", item);
+      }
+    });
+  }
+
+  function removeItem(item) {
+    const idx = items.indexOf(item);
+    items.splice(idx, 1);
+    byId.delete(item.id);
+    const li = nodeOf.get(item.id);
+    if (li) li.remove();
+    nodeOf.delete(item.id);
+    renderStats(); scheduleSave();
+    showUndo("todo", item, idx);
+  }
+
+  /* ============ 知识点交互 ============ */
+  $("noteAddForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = $("noteInput");
+    const title = input.value.trim();
+    if (!title) return;
+    const note = { id: newId(), title, content: "", tags: [], source: "", createdAt: Date.now(), updatedAt: null };
+    notes.push(note);
+    noteById.set(note.id, note);
+    mountNote(note);
+    input.value = "";
+    input.focus();
+    renderNoteStats(); renderNoteTags(); applyNoteFilter();
+    scheduleSave();
+    toast("已记录，点「编辑」可补充内容、标签和来源");
+  });
+
+  noteList.addEventListener("click", (e) => {
+    const li = e.target.closest(".note");
+    if (!li) return;
+    const note = noteById.get(li.dataset.id);
+    if (!note) return;
+    const act = e.target.dataset.act;
+    if (act === "delete") return removeNote(note);
+    if (act === "edit") return openNoteEdit(note);
+  });
+
+  function removeNote(note) {
+    const idx = notes.indexOf(note);
+    notes.splice(idx, 1);
+    noteById.delete(note.id);
+    const li = noteNodeOf.get(note.id);
+    if (li) li.remove();
+    noteNodeOf.delete(note.id);
+    renderNoteStats(); renderNoteTags(); applyNoteFilter();
+    scheduleSave();
+    showUndo("note", note, idx);
+  }
+
+  $("noteSearch").addEventListener("input", (e) => { noteQuery = e.target.value.trim(); applyNoteFilter(); });
+  $("noteTagBar").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    noteTag = chip.dataset.tag || "";
+    renderNoteTags(); applyNoteFilter();
+  });
+
+  /* ============ 面试题交互 ============ */
+  $("qaAddForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = $("qaInput");
+    const title = input.value.trim();
+    if (!title) return;
+    const q = { id: newId(), title, content: "", answer: "", category: "", source: "", createdAt: Date.now(), updatedAt: null };
+    questions.push(q);
+    qaById.set(q.id, q);
+    mountQa(q);
+    input.value = "";
+    input.focus();
+    renderQaStats(); renderQaTags(); applyQaFilter();
+    scheduleSave();
+    toast("已记录，点「编辑」补充题干和参考答案");
+  });
+
+  qaList.addEventListener("click", (e) => {
+    const li = e.target.closest(".note");
+    if (!li) return;
+    const q = qaById.get(li.dataset.id);
+    if (!q) return;
+    const act = e.target.dataset.act;
+    if (act === "delete") return removeQa(q);
+    if (act === "edit") return openQaEdit(q);
+    if (act === "fold") {
+      const full = li.querySelector(".qa-full");
+      full.hidden = !full.hidden;
+      e.target.textContent = full.hidden ? "查看答案" : "收起答案";
+    }
+  });
+
+  function removeQa(q) {
+    const idx = questions.indexOf(q);
+    questions.splice(idx, 1);
+    qaById.delete(q.id);
+    const li = qaNodeOf.get(q.id);
+    if (li) li.remove();
+    qaNodeOf.delete(q.id);
+    renderQaStats(); renderQaTags(); applyQaFilter();
+    scheduleSave();
+    showUndo("qa", q, idx);
+  }
+
+  $("qaSearch").addEventListener("input", (e) => { qaQuery = e.target.value.trim(); applyQaFilter(); });
+  $("qaTagBar").addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    qaTag = chip.dataset.tag || "";
+    renderQaTags(); applyQaFilter();
+  });
+
+  /* ============ 撤销 ============ */
+  let undo = null, toastTimer = 0;
+  function showUndo(kind, obj, idx) {
+    undo = { kind, obj, idx };
+    const label = obj.text || obj.title || "";
+    $("toastMsg").textContent = "已删除「" + label.slice(0, 12) + (label.length > 12 ? "…" : "") + "」";
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { undo = null; $("toast").classList.remove("show"); }, 5000);
+  }
+  function toast(msg) {
+    undo = null;
+    $("toastMsg").textContent = msg;
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $("toast").classList.remove("show"), 3000);
+  }
+  $("toastUndo").addEventListener("click", () => {
+    if (!undo) return;
+    const { kind, obj, idx } = undo; undo = null;
+    if (kind === "todo") {
+      items.splice(idx, 0, obj);
+      byId.set(obj.id, obj);
+      mount(obj); syncNode(obj); renderStats();
+    } else if (kind === "note") {
+      notes.splice(idx, 0, obj);
+      noteById.set(obj.id, obj);
+      mountNote(obj);
+      renderNoteStats(); renderNoteTags(); applyNoteFilter();
+    } else if (kind === "qa") {
+      questions.splice(idx, 0, obj);
+      qaById.set(obj.id, obj);
+      mountQa(obj);
+      renderQaStats(); renderQaTags(); applyQaFilter();
+    }
+    scheduleSave();
+    $("toast").classList.remove("show");
+  });
+
+  /* ============ 弹窗管理 ============ */
+  const mask = $("mask");
+  function showOnly(id) {
+    for (const d of mask.querySelectorAll(".dialog")) d.hidden = d.id !== id;
+    mask.hidden = false;
+  }
+  function openDialog(id, item) {
+    showOnly(id);
+    if (id === "dlgMethod") {
+      pendingId = item.id;
+      $("dlgTitle").textContent = item.text;
+      $("methodInput").value = item.method || "";
+      $("dlgHint").textContent = "";
+      checkOk();
+      $("methodInput").focus();
+    }
+  }
+  function closeDialog() {
+    mask.hidden = true;
+    pendingId = null; editingTodoId = null; editingNoteId = null; editingQaId = null;
+  }
+  mask.addEventListener("click", (e) => { if (e.target === mask) closeDialog(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !mask.hidden) closeDialog(); });
+
+  // 完成方式弹窗
+  const methodInput = $("methodInput"), dlgHint = $("dlgHint");
+  $("chips").innerHTML = CHIPS.map((c) => `<button type="button" class="chip">${c}</button>`).join("");
+  $("chips").addEventListener("click", (e) => {
+    if (e.target.classList.contains("chip")) { methodInput.value = e.target.textContent; methodInput.focus(); checkOk(); }
+  });
+  function checkOk() { $("dlgOk").disabled = methodInput.value.trim() === ""; }
+  methodInput.addEventListener("input", checkOk);
+  methodInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && methodInput.value.trim()) confirmDone();
+  });
+  $("dlgCancel").addEventListener("click", closeDialog);
+  $("dlgOk").addEventListener("click", confirmDone);
+
+  function confirmDone() {
+    const method = methodInput.value.trim();
+    if (!method) { dlgHint.textContent = "请填写完成方式，便于后续复盘"; return; }
+    const item = byId.get(pendingId);
+    closeDialog();
+    if (!item || item.done) return;
+    item.done = true; item.completedAt = Date.now(); item.method = method;
+    const li = nodeOf.get(item.id);
+    if (li) li.remove();
+    mount(item); syncNode(item); renderStats(); scheduleSave();
+  }
+
+  // 编辑待办弹窗
+  function openTodoEdit(item) {
+    editingTodoId = item.id;
+    showOnly("dlgTodo");
+    $("tdText").value = item.text;
+    $("tdMethodField").hidden = !item.done;
+    $("tdMethod").value = item.method || "";
+    $("tdHint").textContent = "";
+    $("tdText").focus();
+    $("tdText").select();
+  }
+  $("tdCancel").addEventListener("click", closeDialog);
+  $("tdSave").addEventListener("click", saveTodoEdit);
+  $("tdText").addEventListener("keydown", (e) => { if (e.key === "Enter") saveTodoEdit(); });
+  $("tdMethod").addEventListener("keydown", (e) => { if (e.key === "Enter") saveTodoEdit(); });
+
+  function saveTodoEdit() {
+    const item = byId.get(editingTodoId);
+    if (!item) return closeDialog();
+    const text = $("tdText").value.trim();
+    if (!text) { $("tdHint").textContent = "内容不能为空"; return; }
+    const method = $("tdMethod").value.trim();
+    const changed = text !== item.text || (item.done && method !== item.method);
+    item.text = text;
+    if (item.done) item.method = method;
+    if (changed) item.editedAt = Date.now();
+    closeDialog();
+    syncNode(item); scheduleSave();
+    toast("已保存修改");
+  }
+
+  // 知识点弹窗
+  $("ntTagChips").innerHTML = NOTE_TAGS.map((c) => `<button type="button" class="chip">${c}</button>`).join("");
+  $("ntTagChips").addEventListener("click", (e) => {
+    if (!e.target.classList.contains("chip")) return;
+    const input = $("ntTags");
+    const cur = parseTags(input.value);
+    const tag = e.target.textContent;
+    if (!cur.includes(tag)) cur.push(tag);
+    input.value = cur.join(", ");
+  });
+
+  function openNoteEdit(note) {
+    editingNoteId = note ? note.id : null;
+    showOnly("dlgNote");
+    $("ntHead").textContent = note ? "编辑知识点" : "新增知识点";
+    $("ntTitle").value = note ? note.title : "";
+    $("ntContent").value = note ? note.content : "";
+    $("ntTags").value = note ? note.tags.join(", ") : "";
+    $("ntSource").value = note ? note.source : "";
+    $("ntHint").textContent = "";
+    $("ntTitle").focus();
+  }
+  $("ntCancel").addEventListener("click", closeDialog);
+  $("ntSave").addEventListener("click", saveNoteEdit);
+
+  function saveNoteEdit() {
+    const title = $("ntTitle").value.trim();
+    if (!title) { $("ntHint").textContent = "标题不能为空"; return; }
+    const content = $("ntContent").value.trim();
+    const tags = parseTags($("ntTags").value);
+    const source = $("ntSource").value.trim();
+    const note = editingNoteId ? noteById.get(editingNoteId) : null;
+    if (note) {
+      note.title = title; note.content = content; note.tags = tags; note.source = source;
+      note.updatedAt = Date.now();
+      closeDialog();
+      fillNote(noteNodeOf.get(note.id), note);
+      renderNoteStats(); renderNoteTags(); applyNoteFilter(); scheduleSave();
+      toast("已保存修改");
+    } else {
+      const n = { id: newId(), title, content, tags, source, createdAt: Date.now(), updatedAt: null };
+      notes.push(n);
+      noteById.set(n.id, n);
+      closeDialog();
+      mountNote(n);
+      renderNoteStats(); renderNoteTags(); applyNoteFilter(); scheduleSave();
+      toast("已记录知识点");
+    }
+    editingNoteId = null;
+  }
+
+  // 面试题弹窗
+  $("qaCatChips").innerHTML = QA_CATS.map((c) => `<button type="button" class="chip">${c}</button>`).join("");
+  $("qaCatChips").addEventListener("click", (e) => {
+    if (!e.target.classList.contains("chip")) return;
+    $("qaCat").value = e.target.textContent;
+  });
+
+  function openQaEdit(q) {
+    editingQaId = q ? q.id : null;
+    showOnly("dlgQa");
+    $("qaHead").textContent = q ? "编辑面试题" : "新增面试题";
+    $("qaTitle").value = q ? q.title : "";
+    $("qaContent").value = q ? q.content : "";
+    $("qaAnswer").value = q ? q.answer : "";
+    $("qaCat").value = q ? q.category : "";
+    $("qaHint").textContent = "";
+    $("qaTitle").focus();
+  }
+  $("qaCancel").addEventListener("click", closeDialog);
+  $("qaSave").addEventListener("click", saveQaEdit);
+
+  function saveQaEdit() {
+    const title = $("qaTitle").value.trim();
+    if (!title) { $("qaHint").textContent = "题目不能为空"; return; }
+    const content = $("qaContent").value.trim();
+    const answer = $("qaAnswer").value.trim();
+    const category = $("qaCat").value.trim();
+    const q = editingQaId ? qaById.get(editingQaId) : null;
+    if (q) {
+      q.title = title; q.content = content; q.answer = answer; q.category = category;
+      q.updatedAt = Date.now();
+      closeDialog();
+      fillQa(qaNodeOf.get(q.id), q);
+      renderQaStats(); renderQaTags(); applyQaFilter(); scheduleSave();
+      toast("已保存修改");
+    } else {
+      const nq = { id: newId(), title, content, answer, category, source: "", createdAt: Date.now(), updatedAt: null };
+      questions.push(nq);
+      qaById.set(nq.id, nq);
+      closeDialog();
+      mountQa(nq);
+      renderQaStats(); renderQaTags(); applyQaFilter(); scheduleSave();
+      toast("已记录面试题");
+    }
+    editingQaId = null;
+  }
+
+  /* ============ 筛选 ============ */
+  $("tabs").addEventListener("click", (e) => {
+    const tab = e.target.closest(".tab");
+    if (!tab || tab.dataset.filter === filter) return;
+    filter = tab.dataset.filter;
+    for (const t of $("tabs").children) t.classList.toggle("on", t === tab);
+    applyFilter();
+  });
+
+  /* ============ 备份：导出 / 导入 ============ */
+  function renderBackupTip() {
+    let savedAt = 0;
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) savedAt = Number(JSON.parse(raw).savedAt) || 0;
+    } catch (e) { /* 忽略 */ }
+    const tip = $("backupTip");
+    if (!savedAt) { tip.textContent = ""; return; }
+    const days = Math.floor((Date.now() - savedAt) / 86400000);
+    tip.textContent = days === 0
+      ? "数据已存本机，建议每周导出一次备份"
+      : `距上次保存 ${days} 天，建议导出一次备份`;
+  }
+
+  $("exportBtn").addEventListener("click", () => {
+    const byDay = {};
+    for (const it of items) {
+      if (!it.done) continue;
+      const k = dayKey(it.completedAt || it.createdAt);
+      (byDay[k] ||= []).push({ 事项: it.text, 创建: fmtTime(it.createdAt), 完成: fmtTime(it.completedAt || 0), 方式: it.method });
+    }
+    const payload = {
+      应用: "每日待办与知识点",
+      版本: 2,
+      导出时间: fmtTime(Date.now()),
+      待办: items,
+      知识点: notes,
+      面试题: questions,
+      按日复盘: byDay
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `待办与知识点备份-${dayKey(Date.now())}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
+    toast(`已导出待办 ${items.length} 条、知识点 ${notes.length} 条、面试题 ${questions.length} 题`);
+  });
+
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(String(reader.result)); }
+      catch (err) { return toast("导入失败：文件不是有效的 JSON"); }
+      const its = normItems(data.待办 || data.items);
+      const nts = normNotes(data.知识点 || data.notes);
+      const qas = normQuestions(data.面试题 || data.questions);
+      if (!its.length && !nts.length && !qas.length) return toast("导入失败：文件里没有可导入的数据");
+      pendingImport = { items: its, notes: nts, questions: qas };
+      const parts = [];
+      if (its.length) parts.push(`待办 ${its.length} 条`);
+      if (nts.length) parts.push(`知识点 ${nts.length} 条`);
+      if (qas.length) parts.push(`面试题 ${qas.length} 题`);
+      $("imInfo").textContent = parts.join(" · ") + "。合并=保留现有数据并追加新条目；覆盖=清空现有数据后写入。";
+      $("imHint").textContent = "";
+      showOnly("dlgImport");
+    };
+    reader.onerror = () => toast("导入失败：文件读取出错");
+    reader.readAsText(file);
+  });
+
+  $("imCancel").addEventListener("click", () => { pendingImport = null; closeDialog(); });
+  $("imMerge").addEventListener("click", () => doImport("merge"));
+  $("imReplace").addEventListener("click", () => doImport("replace"));
+
+  function doImport(mode) {
+    const data = pendingImport;
+    if (!data) return closeDialog();
+    if (mode === "replace") {
+      items = data.items;
+      notes = data.notes;
+      questions = data.questions;
+    } else {
+      const ids = new Set(items.map((i) => i.id));
+      for (const it of data.items) if (!ids.has(it.id)) { items.push(it); ids.add(it.id); }
+      const nids = new Set(notes.map((n) => n.id));
+      for (const n of data.notes) if (!nids.has(n.id)) { notes.push(n); nids.add(n.id); }
+      const qids = new Set(questions.map((q) => q.id));
+      for (const q of data.questions) if (!qids.has(q.id)) { questions.push(q); qids.add(q.id); }
+    }
+    pendingImport = null;
+    dirty = true;
+    flush();
+    location.reload();
+  }
+
+  /* ============ 底部工具 ============ */
+  $("clearDoneBtn").addEventListener("click", () => {
+    if (!items.some((i) => i.done)) return toast("没有已完成的事项");
+    if (!confirm("确定清空全部已完成事项？该操作不可撤销，建议先导出备份。")) return;
+    for (const it of items.filter((i) => i.done)) {
+      byId.delete(it.id);
+      const li = nodeOf.get(it.id); if (li) li.remove();
+      nodeOf.delete(it.id);
+    }
+    items = items.filter((i) => !i.done);
+    renderStats(); scheduleSave();
+    toast("已清空完成区");
+  });
+
+  /* ============ 启动 ============ */
+  const migrated = load();
+  injectPreset();
+  for (const it of items) { buildNode(it); mount(it); }
+  for (const n of notes) { buildNoteNode(n); mountNote(n); }
+  for (const q of questions) { buildQaNode(q); mountQa(q); }
+  renderStats();
+  applyFilter();
+  renderNoteStats();
+  renderNoteTags();
+  applyNoteFilter();
+  renderQaStats();
+  renderQaTags();
+  applyQaFilter();
+  renderBackupTip();
+  if (migrated) toast("已升级本地数据格式，原有待办完整保留");
+  flush();
+})();
+</script>
+</body>
+</html>
